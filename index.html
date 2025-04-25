@@ -129,14 +129,19 @@
   </div>
 
   <script>
-    const sheetURL = "https://script.google.com/macros/s/AKfycbxTCrTrq5kk8oHQwtJpKtKcuHR8lnE8_A4bYPP7mrU1csJLPR8DfHxBCVMRQoHjqprp/exec";
-    const today = new Date().toISOString().split('T')[0];
-    const monthKey = today.slice(0, 7);
-    const weekDay = ["일", "월", "화", "수", "목", "금", "토"];
-    const dayOfWeek = new Date().getDay();
+const sheetURL = "https://script.google.com/macros/s/AKfycbxTCrTrq5kk8oHQwtJpKtKcuHR8lnE8_A4bYPP7mrU1csJLPR8DfHxBCVMRQoHjqprp/exec";
 
-    document.getElementById("date").textContent = today;
-    document.getElementById("weekday").textContent = weekDay[dayOfWeek];
+// 한국 시간 기준으로 날짜/요일 설정
+const now = new Date();
+const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+
+const today = kst.toISOString().slice(0, 10);
+const monthKey = today.slice(0, 7);
+const weekDay = ["일", "월", "화", "수", "목", "금", "토"];
+const dayOfWeek = kst.getUTCDay();
+
+document.getElementById("date").textContent = today;
+document.getElementById("weekday").textContent = weekDay[dayOfWeek];
     let selectedGroup = "";
     let lastAnswer = null;
 
