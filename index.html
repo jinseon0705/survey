@@ -38,9 +38,9 @@
       background-color: #ffca28;
     }
     .question {
-      font-size: 2em;
+      font-size: 2.5em;
       font-weight: bold;
-      margin: 40px 0 20px;
+      margin: 80px 0 10px; /* 위쪽 마진 줄임 */
       color: #444;
       background-color: #fbc02d;
       padding: 20px;
@@ -48,13 +48,16 @@
       box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
       display: inline-block;
     }
+    .answer-buttons {
+      margin-top: 40px; /* 질문 아래 간격 유지 */
+    }
     .answer-buttons button {
       width: 180px;
       height: 180px;
       margin: 20px;
       border: none;
       border-radius: 50%;
-      font-size: 1.5em;
+      font-size: 2em; /* 글자 크기 키움 */
       font-weight: bold;
       color: white;
       cursor: pointer;
@@ -83,10 +86,10 @@
     th {
       background-color: #f0f0f0;
     }
-    .hide-stats-btn {
+    .hide-stats-btn, .cancel-btn {
       margin-top: 20px;
-      font-size: 1em;
-      padding: 10px 20px;
+      font-size: 0.9em;
+      padding: 8px 16px;
       cursor: pointer;
       border: none;
       border-radius: 10px;
@@ -111,10 +114,11 @@
   <div class="question" id="questionSection" style="display:none;">
     안전체험교육을 통해<br><strong>위험한 상황에서 어떻게 행동해야 하는지</strong><br>잘 알게 되었나요?
     <div class="answer-buttons">
-      <button class="green" onclick="submitAnswer('네')">네</button>
-      <button class="yellow" onclick="submitAnswer('글쎄요')">글쎄요</button>
-      <button class="red" onclick="submitAnswer('아니요')">아니요</button>
+      <button class="green" onclick="submitAnswer('O')">O</button>
+      <button class="yellow" onclick="submitAnswer('△')">△</button>
+      <button class="red" onclick="submitAnswer('X')">X</button>
     </div>
+    <button class="cancel-btn" onclick="cancelAnswer()">응답 취소</button>
   </div>
 
   <button class="hide-stats-btn" onclick="requestPassword()">통계 보기</button>
@@ -134,13 +138,14 @@
     document.getElementById("date").textContent = today;
     document.getElementById("weekday").textContent = weekDay[dayOfWeek];
     let selectedGroup = "";
+    let lastAnswer = null;
 
     function selectGroup(group) {
       selectedGroup = group;
       document.getElementById("selectedGroup").textContent = group;
       document.getElementById("questionSection").style.display = "block";
       document.getElementById("groupButtons").style.display = "none";
-      updateCountsFromSheet(); // 그룹 선택 시 데이터 갱신
+      updateCountsFromSheet();
     }
 
     function submitAnswer(answer) {
@@ -149,17 +154,47 @@
         return;
       }
 
+      const timestamp = new Date().toISOString();
+
       fetch(sheetURL, {
         method: "POST",
         contentType: "application/json",
         body: JSON.stringify({
           date: today,
+          time: timestamp,
           group: selectedGroup,
           answer: answer
         })
       })
       .then(response => response.text())
-      .then(() => updateCountsFromSheet())  // 응답 후 데이터 갱신
+      .then(() => {
+        lastAnswer = { answer, timestamp };
+        updateCountsFromSheet();
+      })
+      .catch(console.error);
+    }
+
+    function cancelAnswer() {
+      if (!lastAnswer) {
+        alert("취소할 응답이 없습니다!");
+        return;
+      }
+
+      fetch(sheetURL, {
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify({
+          date: today,
+          time: lastAnswer.timestamp,
+          group: selectedGroup,
+          answer: "취소"
+        })
+      })
+      .then(response => response.text())
+      .then(() => {
+        lastAnswer = null;
+        updateCountsFromSheet();
+      })
       .catch(console.error);
     }
 
@@ -169,18 +204,18 @@
         .then(data => {
           const headers = data[0];
           const rows = data.slice(1);
-          const daily = {"네": 0, "글쎄요": 0, "아니요": 0};
-          const monthly = {"네": 0, "글쎄요": 0, "아니요": 0};
+          const daily = {"O": 0, "△": 0, "X": 0};
+          const monthly = {"O": 0, "△": 0, "X": 0};
 
           rows.forEach(row => {
             const [date, group, answer] = row;
             if (group === selectedGroup) {
-              if (date === today) daily[answer]++; // 오늘의 통계
-              if (date.startsWith(monthKey)) monthly[answer]++; // 월별 통계
+              if (date === today) daily[answer]++;
+              if (date.startsWith(monthKey)) monthly[answer]++;
             }
           });
 
-          drawStatsTable(daily, monthly); // 통계 테이블 갱신
+          drawStatsTable(daily, monthly);
         })
         .catch(console.error);
     }
@@ -203,9 +238,9 @@
         <h3>${title}</h3>
         <table>
           <tr><th>응답</th><th>개수</th><th>백분율</th></tr>
-          <tr><td>네</td><td>${data["네"]}</td><td>${(data["네"]/total*100).toFixed(1)}%</td></tr>
-          <tr><td>글쎄요</td><td>${data["글쎄요"]}</td><td>${(data["글쎄요"]/total*100).toFixed(1)}%</td></tr>
-          <tr><td>아니요</td><td>${data["아니요"]}</td><td>${(data["아니요"]/total*100).toFixed(1)}%</td></tr>
+          <tr><td>O</td><td>${data["O"]}</td><td>${(data["O"]/total*100).toFixed(1)}%</td></tr>
+          <tr><td>△</td><td>${data["△"]}</td><td>${(data["△"]/total*100).toFixed(1)}%</td></tr>
+          <tr><td>X</td><td>${data["X"]}</td><td>${(data["X"]/total*100).toFixed(1)}%</td></tr>
           <tr><th>총합</th><th>${total}</th><th>100%</th></tr>
         </table>
       `;
